@@ -38,6 +38,8 @@
 
 package HDDTempMonitorPO;
 
+our $VERSION = 0.2;
+
 # Pragmas
 use 5.010;
 use strict;
@@ -79,7 +81,7 @@ if ( -f $opt{hddtempX} ) {
 }
 else {
   # You need to install hddtemp!
-  say "hddtemp not installed? - sudo apt-get install hddtemp";
+  say "hddtemp not installed? - Ubuntu: sudo apt-get install hddtemp smartmontools";
   # Exit script
   exit(1);
 }
@@ -93,6 +95,10 @@ foreach my $line (split /\n/, $hddTemp) {
     # Get Disk, Model and Status text
     my ($disk, $model, $text) = $line =~ m/(.+?):(.+?):\s(.+)/i;
     
+    # Remove whitespace
+    $model  =~ s/^\s+|\s+$//;
+    $disk   =~ s/^\s+|\s+$//;
+    
     # Disk status shows temp?
     if ( $text =~ m/\d{1,2}/ ) {
       
@@ -100,8 +106,6 @@ foreach my $line (split /\n/, $hddTemp) {
       my ($temp, $unit) = $text =~ m/(\d{1,2})(.+)/;
       
       # Remove whitespace
-      $model  =~ s/^\s+|\s+$//;
-      $disk   =~ s/^\s+|\s+$//;
       $temp   =~ s/^\s+|\s+$//;
       $unit   =~ s/^\s+|\s+$//;
       
@@ -114,7 +118,7 @@ foreach my $line (split /\n/, $hddTemp) {
         $messagePO     .= "Temp: $temp$unit\n";
         
       }
-      # Report ALL? - Rinning on 15/30min cron thsi would be excesive - More for checking it works ok
+      # Report ALL? - Running on 15/30min cron this would be excesive - More for checking it works ok
       elsif ( $opt{reportAll} ) { 
         $messagePO     .= "--- Normal ---\n";
         $messagePO     .= "Disk: $disk\n";
@@ -132,7 +136,7 @@ foreach my $line (split /\n/, $hddTemp) {
     }
     # Status had no temp in it. Disk could be sleeping
     else {
-      # Report ALL? - Rinning on 15/30min cron thsi would be excesive - More for checking it works ok
+      # Report ALL? - Running on 15/30min cron this would be excesive - More for checking it works ok
       if ( $opt{reportAll} ) { 
         $messagePO     .= "--- Normal ---\n";
         $messagePO     .= "Disk: $disk\n";
@@ -149,7 +153,7 @@ foreach my $line (split /\n/, $hddTemp) {
   else {
     # send to stdout
     if ( $opt{useStdOut} ) {
-      say "Permision denied or no output  - Running as root (sudo)?";
+      say "Permision denied or no output  - Running has root (sudo)?";
     } 
     #else - using cron - But you test it work first RIGHT?
   }
@@ -168,6 +172,7 @@ if ( $messagePO ) {
     );
 
   if ( $opt{useStdOut} ) {
+    # Inform if message sent
     my $poStatus = $poSent ? 'Success' : 'Failed';
     say "Pushover message status: $poStatus";
   }
@@ -183,6 +188,7 @@ sub send_message_po {
   # Get passed options
   my %optHash = @_;
   
+  # No Message?
   if ( !$optHash{poMessage} ) { return 0; }
 
   # Valid Pushover sounds
@@ -191,23 +197,23 @@ sub send_message_po {
     magic mechanical pianobar siren spacealarm tugboat alien climb persistent echo updown none
   };
 
-  # Check sound valid and if not assign default
-  if ( !grep { $_ =~ /^$optHash{poSound}$/ } @poSounds ) {
+  # Check sound valid and if not assign default - If empty then users default on device is used
+  if ( !grep { $_ =~ /^$optHash{poSound}$/ } @poSounds and $optHash{poSound} != '' ) {
     $optHash{poSound} = 'pushover';
   }
 
   # Add default title if needed
-  if ( !defined $optHash{poTitle} ) { $optHash{poTitle} = 'HDD Temp Monitor'; }
+  if ( not defined $optHash{poTitle} ) { $optHash{poTitle} = 'HDD Temp Monitor'; }
 
-  # Priority must be between -2 and 2
-  if ( !defined $optHash{poPriority} || $optHash{poPriority} > 2 || $optHash{poPriority} < -2 ) { $optHash{poPriority} = 0; }
+  # Priority must be between -2 and 2 - If not default to 0
+  if ( not defined $optHash{poPriority} or $optHash{poPriority} > 2 or $optHash{poPriority} < -2 ) { $optHash{poPriority} = 0; }
 
-  # Priority 2 can only be used with expire and retry
+  # Priority 2 can only be used with expire and retry -  If missing defult to 1
   if ( (not defined $optHash{poExpire} or not defined $optHash{poRetry}) and $optHash{poPriority} == 2) { $optHash{poPriority} = 1; }
 
   # Make sure expire setting is no less then 30 or more than 86400 seconds
   if ( defined $optHash{expire} ) { 
-    $optHash{poExpire} = $optHash{poExpire} < 30 ? 30 : $optHash{poExpire}; 
+    $optHash{poExpire} = $optHash{poExpire} < 30 ? 30       : $optHash{poExpire}; 
     $optHash{poExpire} = $optHash{poExpire} < 86400 ? 86400 : $optHash{poExpire};
   }
   
@@ -241,11 +247,9 @@ sub send_message_po {
   else {
     return 0;
   }
-
   return;
 }
 
 1;
 
 __END__
-
