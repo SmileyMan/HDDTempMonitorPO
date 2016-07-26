@@ -45,7 +45,7 @@ use 5.010;
 use strict;
 use warnings;
 
-# Used for messging
+# Used for messaging
 use LWP::UserAgent;
 
 # Option hash used for script - Edit any details here - Get your UserKey and Token from http://pushover.net!
@@ -198,7 +198,7 @@ sub send_message_po {
   };
 
   # Check sound valid and if not assign default - If empty then users default on device is used
-  if ( !grep { $_ =~ /^$optHash{poSound}$/ } @poSounds and $optHash{poSound} != '' ) {
+  if ( !grep { $_ =~ /^$optHash{poSound}$/ } @poSounds and $optHash{poSound} ne '' ) {
     $optHash{poSound} = 'pushover';
   }
 
